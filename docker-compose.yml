@@ -1,0 +1,46 @@
+services:
+  postgres-service:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: postgres-data
+    env_file:
+      - .env.dev
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    networks:
+      - postgres-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_DATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres-service:
+        condition: service_healthy
+    command: 'npm run start:prod'
+    ports:
+      - "${PORT}:80"
+    env_file:
+      - .env.dev
+    networks:
+      - postgres-network
+    volumes:
+      - smartgas-api:/data
+
+volumes:
+  postgres-data:
+  smartgas-api:
+
+networks:
+  postgres-network:
